@@ -27,14 +27,36 @@ def move_videos_from_one_playlist_to_another(driver, from_playlist_url, to_playl
 
     driver.get(from_playlist_url)
 
+    # click the "Sort" button, so we can sort the playlist the way the user desires
+    execute_script(driver, 'document.querySelector("tp-yt-paper-button#label.dropdown-trigger.style-scope.yt-dropdown-menu").click()')
+    sort_map = {"newest-addition": "Date added (newest)", "oldest-addition": "Date added (oldest)", "most-popular": "Most popular", "newest-publish": "Date published (newest)", "oldest-publish": "Date published (oldest)"}
+    try:
+        execute_script(driver, 'document.querySelector("tp-yt-paper-listbox#menu.dropdown-content.style-scope.yt-dropdown-menu").querySelectorAll(".item.style-scope.yt-dropdown-menu").forEach(e => { if(e.innerText === "' + sort_map[sort_method] + '"){e.click()}})')
+    except:
+        raise Exception(f"Sort method: '{sort_method}' is not supported. Please, use one of the supported sort methods: [{', '.join(sort_map.keys())}]")
+
+    # this code here waits for YouTube to actually sort the videos in the playlist before proceeding
+    while True:
+        try:
+            execute_script(driver, 'document.querySelector(".reloading.ytd-playlist-video-list-renderer").click()', time_before_execute_sec=1, number_of_sec_before_fail=2)
+        except: break
+
+    videos_end_index = number_of_videos_to_move + videos_offset
+    number_of_videos_in_playlist = execute_script(driver, 'return document.querySelector("yt-formatted-string.byline-item.style-scope.ytd-playlist-byline-renderer").querySelector("span").innerText')
+
+    if number_of_videos_in_playlist < videos_end_index:
+        print(f"Attempted to get videos {videos_offset + 1}-{videos_end_index} ({videos_end_index - videos_offset} total), however there are only {number_of_videos_in_playlist} videos in the playlist. Getting videos {videos_offset + 1}-{number_of_videos_in_playlist} ({number_of_videos_in_playlist - videos_offset} total) instead.")
+        videos_end_index = number_of_videos_in_playlist
+
     print(f"to_playlist_name: {to_playlist_name}")
     print(f"number_of_videos_to_move: {number_of_videos_to_move}")
     print(f"videos_offset: {videos_offset}")
-    print(f"start from video: {videos_offset} and stop at video: {number_of_videos_to_move + videos_offset}")
-    print("now waiting 100000sec...")
+    print(f"start from video: {videos_offset} and stop at video: {videos_end_index}")
+    print(f"given sort method: {sort_method}  corresponding yt sort method: {sort_map[sort_method]}")
+    print("now waiting 100000sec... (waiting because the logic below is still not done)")
     time.sleep(100000)
 
-    for i in range(videos_offset, number_of_videos_to_move + videos_offset, 1):
+    for i in range(videos_offset, videos_end_index, 1):
         # todo: the way I'm doing it here is not optimal... going to the playlist to transfer every video manually (which requires going through a couple of menus) is just not optimal... The better way to do this is to save in a list the urls of all videos in the playlist, so that we can add threads to the bot. Afterwards the bot is going to go to each video's url and it's going to move the video from one playlist to another based on the names of the playlists (all of this is going to happen inside of threads so hopefully it happens quickly)
         # click the current video menu btn
         execute_script(driver, f'document.querySelectorAll("ytd-playlist-video-renderer.style-scope.ytd-playlist-video-list-renderer")[{i}].querySelector("#menu").querySelector("button#button").click()')
