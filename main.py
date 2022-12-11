@@ -6,12 +6,14 @@ from selenium import webdriver
 from seleniumMandatoryMethods import execute_script
 
 
-def initialize(chrome_data_dir_path="chrome-data", chromedriver_path="chromedriver.exe"):
+def initialize(chrome_data_dir_path="chrome-data", chromedriver_path="chromedriver.exe", headless=True):
     script_directory = pathlib.Path().absolute()
     user_data_dir = str(pathlib.Path(script_directory)) + f"\\{chrome_data_dir_path}"
 
     options = webdriver.ChromeOptions()
     options.add_argument(f"--user-data-dir={user_data_dir}")
+    if headless:
+        options.add_argument("--headless")
     driver = webdriver.Chrome(executable_path=chromedriver_path, options=options)
 
     return driver
@@ -25,6 +27,7 @@ def move_videos_from_one_playlist_to_another(driver, from_playlist_url, to_playl
     # change the Google profile language (because this bot relies on YouTube english text labels to select some elements/information)  (also this is not the best sopt for this piece of code... probably going to move it in the future)
 
     driver.get(from_playlist_url)
+    from_playlist_name = execute_script(driver, 'return document.querySelector(".metadata-wrapper.style-scope.ytd-playlist-header-renderer").querySelector("#text").innerText')
 
     # click the "Sort" button, so we can sort the playlist the way the user desires
     execute_script(driver, 'document.querySelector("tp-yt-paper-button#label.dropdown-trigger.style-scope.yt-dropdown-menu").click()')
@@ -47,6 +50,7 @@ def move_videos_from_one_playlist_to_another(driver, from_playlist_url, to_playl
         print(f"Attempted to get videos {videos_offset + 1}-{videos_end_index} ({videos_end_index - videos_offset} total), however there are only {number_of_videos_in_playlist} videos in the playlist. Getting videos {videos_offset + 1}-{number_of_videos_in_playlist} ({number_of_videos_in_playlist - videos_offset} total) instead.")
         videos_end_index = number_of_videos_in_playlist
 
+    print(f"from_playlist_name: {from_playlist_name}")
     print(f"to_playlist_name: {to_playlist_name}")
     print(f"number_of_videos_to_move: {number_of_videos_to_move}")
     print(f"videos_offset: {videos_offset}")
@@ -77,8 +81,20 @@ def move_videos_from_one_playlist_to_another(driver, from_playlist_url, to_playl
 
     print("printing videos array: ")
     print(youtube_videos)
-    print("now waiting 100000sec... (waiting because the logic below is still not done)")
-    time.sleep(100000)
+
+    for video_url in youtube_videos:
+        driver.get(video_url)
+        # open the menu from which you control what playlist the video is in
+        while True:
+            execute_script(driver, 'let foundSaveToPlatlistBtn = false; document.querySelectorAll("yt-icon").forEach(e => { if(e.innerHTML.includes(\'<svg viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" focusable="false" class="style-scope yt-icon" style="pointer-events: none; display: block; width: 100%; height: 100%;"><g class="style-scope yt-icon"><path d="M22,13h-4v4h-2v-4h-4v-2h4V7h2v4h4V13z M14,7H2v1h12V7z M2,12h8v-1H2V12z M2,16h8v-1H2V16z" class="style-scope yt-icon"></path></g></svg>\')){if(!foundSaveToPlatlistBtn){ e.click(); foundSaveToPlatlistBtn = true; } } } );')
+            # check if the video playlist manipulator popup window has been activated... if not try again
+            try:
+                execute_script(driver, 'document.querySelector("tp-yt-paper-dialog").style', number_of_sec_before_fail=0)
+                break
+            except: pass #print("Playlist manipulator popup menu was not showed... Trying again")
+        # click the playlist the video is currently in (to remove it from there) and click the playlist you want the video to go into (to actually put it inside the playlist)
+        execute_script(driver, 'Array.from(document.getElementById("playlists").children).forEach(e => { ' + f'if(e.querySelector("#label").innerText == "{from_playlist_name}" || e.querySelector("#label").innerText == "{to_playlist_name}")' + '{ setTimeout(() => { e.querySelector("#checkbox").click()}, 500) } })')
+        time.sleep(1.2)
 
 
 # TEST AREA
@@ -95,7 +111,8 @@ chromedriver_path = "chromedriver.exe"
 # user inputs (please give them a value that is true for your local system, otherwise the bot won't work)
 
 driver = initialize(chrome_data_dir_path, chromedriver_path)
-move_videos_from_one_playlist_to_another(driver, "https://www.youtube.com/playlist?list=WL", "https://www.youtube.com/playlist?list=PLlLaeBxLO4Kk0dxeqM2pTTe7rlKsAYjUT", 5, 515, "oldest-addition")
+move_videos_from_one_playlist_to_another(driver, "https://www.youtube.com/playlist?list=WL", "https://www.youtube.com/playlist?list=PLlLaeBxLO4Kk0dxeqM2pTTe7rlKsAYjUT", 5, 1, "newest-addition")
+driver.quit()
 
 # code I will probably need later ->
 # get all currently rendered videos inside the playlist:

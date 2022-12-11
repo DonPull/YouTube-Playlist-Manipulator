@@ -32,6 +32,8 @@ def install_latest_chromedriver():
 
 def execute_script(driver, script, number_of_sec_before_fail=20, time_before_execute_sec=0, throw_exception=True):
     time.sleep(time_before_execute_sec)
+    if number_of_sec_before_fail <= 0:
+        number_of_sec_before_fail = 1
 
     for i in range(number_of_sec_before_fail):
         try:
@@ -47,6 +49,8 @@ def execute_script(driver, script, number_of_sec_before_fail=20, time_before_exe
 
 def find_element(driver, by, script, number_of_sec_before_fail=25, time_before_execute_sec=0, throw_exception=True):
     time.sleep(time_before_execute_sec)
+    if number_of_sec_before_fail <= 0:
+        number_of_sec_before_fail = 1
 
     for i in range(number_of_sec_before_fail):
         try:
@@ -63,6 +67,8 @@ def find_element(driver, by, script, number_of_sec_before_fail=25, time_before_e
 
 def find_elements(driver, by, script, number_of_sec_before_fail=25, time_before_execute_sec=0, throw_exception=True):
     time.sleep(time_before_execute_sec)
+    if number_of_sec_before_fail <= 0:
+        number_of_sec_before_fail = 1
 
     for i in range(number_of_sec_before_fail):
         try:
